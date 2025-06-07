@@ -1,6 +1,6 @@
 # First Circle Code Challenge: ledger
 
-[Challenge](./docs/challenge.md) definition
+[Challenge definition](./docs/challenge.md)
 
 [Architecture diagram](./docs/architecture.md)
 

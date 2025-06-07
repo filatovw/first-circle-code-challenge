@@ -1,0 +1,31 @@
+[project]
+name = "ingestion"
+version = "0.1.0"
+description = "Set of tools used for the data ingestion"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "confluent-kafka>=2.10.0",
+    "polars>=1.30.0",
+    "pydantic>=2.11.5",
+    "structlog>=25.4.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipdb>=0.13.13",
+]
+test = [
+    "mypy>=1.16.0",
+    "pytest>=8.4.0",
+    "ruff>=0.11.13",
+    "testcontainers>=4.10.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+tx_csv_ingestor = "ingestion.entrypoints.tx_csv_ingestor:main"
+tx_stream_ingestor = "ingestion.entrypoints.tx_stream_ingestor:main"

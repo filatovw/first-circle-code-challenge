@@ -63,7 +63,7 @@ Note: it is also possible to use COPY ... FROM ... postgres feature, but it will
 Purpose:
 - intermediate layer for keeping transactions until they reached the DB
 
-Note: transactions are created somewhere on the Banking application layer. I omit its implementation. This topic seeds with the transactions from CSV files.
+Note: **transactions** are created somewhere on the Banking application layer. I omit its implementation. This topic seeds with the transactions from CSV files.
 
 Message format:
 ```json
