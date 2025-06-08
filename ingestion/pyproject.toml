@@ -6,7 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "confluent-kafka>=2.10.0",
+    "connectorx>=0.4.3",
+    "faker>=37.3.0",
     "polars>=1.30.0",
+    "pyarrow>=20.0.0",
     "pydantic>=2.11.5",
     "structlog>=25.4.0",
 ]
@@ -14,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ipdb>=0.13.13",
+    "jupyterlab>=4.4.3",
 ]
 test = [
     "mypy>=1.16.0",
