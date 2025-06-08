@@ -22,6 +22,8 @@ down:
 clean:
 	${MAKE} down
 	rm -rf volumes/db
+	rm -rf volumes/minio
+	rm -rf volumes/queue
 
 ## :
 ## help - this message

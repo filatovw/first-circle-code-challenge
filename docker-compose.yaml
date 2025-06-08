@@ -34,48 +34,74 @@ services:
         condition: service_healthy
         restart: true
 
-#  queue:
-#    image: apache/kafka-native:3.9.0
-#    restart: always
-#    environment:
-#      KAFKA_BROKER_ID: 1
-#      KAFKA_CFG_NODE_ID: 1
-#      KAFKA_CFG_PROCESS_ROLES: broker,controller
-#      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-#      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-#      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-#      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-#      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
-#      ALLOW_PLAINTEXT_LISTENER: "yes"
-#    ports:
-#      - "9092:9092"
-#
-#  queue-init:
-#    image: apache/kafka-native:3.9.0
-#    depends_on:
-#      - queue
-#    entrypoint: ["/bin/sh", "-c"]
-#    command: >
-#      "
-#      sleep 10 &&
-#      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic transactions --replication-factor 1 --partitions 1 &&
-#      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic failedTransactions --replication-factor 1 --partitions 1 &&
-#      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic reports --replication-factor 1 --partitions 1
-#      "
-#
-#  s3:
-#    image: minio/minio:RELEASE.2025-03-12T18-04-18Z
-#    restart: always
-#    command: server /data --console-address ":9001"
-#    environment:
-#      MINIO_ROOT_USER: miniouser
-#      MINIO_ROOT_PASSWORD: miniopass
-#    ports:
-#      - "9000:9000"
-#      - "9001:9001"
-#    volumes:
-#      - ./volumes/minio/:/data
-#
+  s3:
+    image: minio/minio:RELEASE.2025-03-12T18-04-18Z
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - ./volumes/s3/:/data
+    environment:
+      MINIO_ROOT_USER: miniouser
+      MINIO_ROOT_PASSWORD: miniopass
+    command: "server --console-address 0.0.0.0:9001 --address 0.0.0.0:9000 /minio"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  s3-init:
+    image: minio/mc:RELEASE.2025-02-21T16-00-46Z
+    depends_on:
+      s3:
+        condition: service_healthy
+    entrypoint: > 
+      /bin/sh -c "
+          sleep 5 
+          mc alias set local http://s3:9000 miniouser miniopass && \
+          mc mb -p local/reports
+        "
+
+  queue:
+    image: bitnami/kafka:3.5.1
+    container_name: kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=false
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./volumes/queue:/bitnami/kafka
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  queue-init:
+    image: bitnami/kafka:3.5.1
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "
+      sleep 5 &&
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic transactions --replication-factor 1 --partitions 1 &&
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic failedTransactions --replication-factor 1 --partitions 1 &&
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic reports --replication-factor 1 --partitions 1
+      "
+    depends_on:
+      queue:
+        condition: service_healthy
+        restart: true
+
 #   tx_stream_ingestor:
 #     build: ./ingestion
 #     depends_on:
