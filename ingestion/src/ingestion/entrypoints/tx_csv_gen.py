@@ -20,6 +20,8 @@ class Config:
     pg_port: int
     pg_db: str
     pg_host: str
+    date_start: datetime
+    date_end: datetime
 
     def to_uri(self) -> str:
         return f"postgresql://{self.pg_user}:{self.pg_password}@{self.pg_host}:{self.pg_port}/{self.pg_db}"
@@ -40,11 +42,31 @@ def get_config() -> Config:
     parser.add_argument("--pg-port", type=str, required=True, help="database port")
     parser.add_argument("--pg-host", type=str, required=True, help="database host")
     parser.add_argument("--pg-db", type=str, required=True, help="database name")
+    parser.add_argument(
+        "--date-start",
+        "-s",
+        type=str,
+        required=True,
+        help="start date of a transaction stream",
+    )
+    parser.add_argument(
+        "--date-end",
+        "-e",
+        type=str,
+        required=True,
+        help="end date of a transaction stream",
+    )
     parsed = parser.parse_args()
 
     pg_password = os.environ.get("POSTGRES_PASSWORD")
     if not pg_password:
         raise ValueError("POSTGRES_PASSWORD Env Var is not set")
+
+    date_format = "%Y-%m-%d"
+    date_start = datetime.strptime(parsed.date_start, date_format)
+    date_end = datetime.strptime(parsed.date_end, date_format)
+    if date_start > date_end:
+        raise ValueError("Start date cannot go after the end date")
 
     return Config(
         output_path=parsed.output_path,
@@ -53,6 +75,8 @@ def get_config() -> Config:
         pg_host=parsed.pg_host,
         pg_db=parsed.pg_db,
         pg_password=pg_password,
+        date_start=date_start,
+        date_end=date_end,
     )
 
 
@@ -60,9 +84,6 @@ def main():
     config = get_config()
 
     factory = faker.Faker()
-    date_start = datetime(2023, 1, 1, 1, 1, 1, 1, tzinfo=UTC)
-    date_end = datetime(2025, 6, 1, 1, 1, 1, 1, tzinfo=UTC)
-
     uri = config.to_uri()
 
     query = """SELECT user_id FROM users LIMIT 5"""
@@ -77,7 +98,7 @@ def main():
 
     df = pl.DataFrame()
     # create pending transactions
-    batch_size = 10
+    batch_size = 1000
     for i in range(batch_size):
         tx = models.Transaction(
             transaction_id=str(uuid4()),
@@ -87,9 +108,9 @@ def main():
             ],  # can be a duplicate for sender_id
             currency=currency,
             amount=factory.random_int(10000, 9999999) / 100,  # can be a large number
-            timestamp=factory.date_time_between_dates(date_start, date_end).astimezone(
-                UTC
-            ),
+            timestamp=factory.date_time_between_dates(
+                config.date_start, config.date_end
+            ).astimezone(UTC),
             status="pending",
         )
         tx_dict = tx.model_dump()
@@ -112,7 +133,7 @@ def main():
     # some transactions will have failed state
     failed_df = df[batch_size // 3 : batch_size - 1]
     failed_df = failed_df.with_columns(
-        timestamp=pl.col("timestamp").dt.offset_by("30s")
+        timestamp=pl.col("timestamp").dt.offset_by("20s")
     )
     failed_df = failed_df.with_columns(status=pl.lit("failed"))
     df = df.vstack(failed_df)
