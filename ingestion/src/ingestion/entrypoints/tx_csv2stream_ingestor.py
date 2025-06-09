@@ -2,7 +2,7 @@ import argparse
 import polars as pl
 from dataclasses import dataclass
 from confluent_kafka import Producer, Message, KafkaError
-from ingestion import models
+from ingestion import dto
 import logging
 
 
@@ -55,7 +55,7 @@ def main():
     for row in tx_df.to_dicts():
         counter += 1
         try:
-            tx = models.Transaction(**row)
+            tx = dto.Transaction(**row)
             message = tx.model_dump_json()
             producer.produce(topic=config.topic, value=message)
             logger.info("Message %s sent", message)

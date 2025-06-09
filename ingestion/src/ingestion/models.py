@@ -1,22 +1,14 @@
-from typing import Literal
 from datetime import datetime
-from pydantic import BaseModel
-from pydantic.types import AwareDatetime, UUID4
-
-TX_STATUSES = ["pending", "completed", "failed"]
+from dataclasses import dataclass
 
 
-class Transaction(BaseModel):
-    transaction_id: UUID4
-    sender_id: UUID4
-    receiver_id: UUID4
-    amount: float  # NOTE: potential issue with rounding
+@dataclass
+class Transaction:
+    transaction_id: str
+    sender_id: str
+    receiver_id: str
+    amount: str
     currency: str
-    timestamp: AwareDatetime
-    status: Literal["pending", "completed", "failed"]
+    timestamp: str
+    status: str
 
-    class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            UUID4: str,
-        }
