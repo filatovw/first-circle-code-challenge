@@ -1,12 +1,15 @@
-from dataclasses import dataclass
+from datetime import datetime
+from pydantic import BaseModel
+from pydantic.types import UUID4
 
 
-@dataclass
-class Transaction:
-    transaction_id: str
-    sender_id: str
-    receiver_id: str
-    amount: str
+class Transaction(BaseModel):
+    transaction_id: UUID4
+    sender_id: UUID4
+    receiver_id: UUID4
+    amount: float
     currency: str
-    timestamp: str
+    timestamp: datetime
     status: str
+    is_suspicious: bool
+    suspicious_reasons: list[str] = []

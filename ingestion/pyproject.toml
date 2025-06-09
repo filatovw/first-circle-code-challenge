@@ -9,6 +9,7 @@ dependencies = [
     "connectorx>=0.4.3",
     "faker>=37.3.0",
     "polars>=1.30.0",
+    "psycopg[binary]>=3.2.9",
     "pyarrow>=20.0.0",
     "pydantic>=2.11.5",
     "structlog>=25.4.0",

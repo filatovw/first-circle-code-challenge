@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging
-import abc
 from ingestion import models
 from ingestion.config import QueueConfig
 import typing as t
@@ -11,25 +10,76 @@ from confluent_kafka import (
     KafkaError,
     KafkaException,
 )
+from ingestion.config import DBConfig
+import psycopg
 
 
-class DBRepository(abc.ABC):
-    def get_users(self, skip: int, limit: int) -> list[t.Any]: ...
+class PostgresRepository:
+    def __init__(
+        self, logger: logging.Logger, client_id: str, config: DBConfig
+    ) -> None:
+        self._logger = logger
+        self._config = config
+        self._client_id = client_id
+        self._connection = None
 
-    def get_currencies(self) -> list[str]: ...
+    def __enter__(self):
+        self._connection = psycopg.connect(
+            dbname=self._config.database,
+            user=self._config.user,
+            host=self._config.host,
+            port=self._config.port,
+            password=self._config.password,
+            autocommit=True,
+            application_name=self._client_id,
+        )
+        self._connection.set_isolation_level(
+            psycopg.IsolationLevel.REPEATABLE_READ,
+        )
 
-    def create_or_update_transaction(self, transaction: models.Transaction): ...
+    def __exit__(self, exc_type, exc_value, traceback):
+        if not self._connection.closed:
+            self._connection.close()
 
-
-class PostgresRepository(DBRepository):
-    def __init__(self, host: str, port: int, user: str, password: str, db: str) -> None:
-        self._uri = f"postgresql://{user}:{password}@{host}:{port}/{db}"
-
-    def get_users(self, skip: int, limit: int) -> list[t.Any]: ...
-
-    def get_currencies(self) -> list[str]: ...
-
-    def create_or_update_transaction(self, transaction: models.Transaction): ...
+    def create_or_update_transaction(self, transaction: models.Transaction) -> int:
+        with self._connection.cursor() as cur:
+            query = """
+            WITH currency AS (
+                SELECT currency_id FROM currencies WHERE symbol = %(currency)s LIMIT 1
+            )
+            INSERT INTO transactions (
+                transaction_id,
+                sender_id,
+                receiver_id,
+                amount,
+                currency_id,
+                created_at,
+                status,
+                is_suspicious,
+                suspicious_reasons
+            )
+            SELECT
+                %(transaction_id)s,
+                %(sender_id)s,
+                %(receiver_id)s,
+                %(amount)s,
+                currency.currency_id,
+                %(timestamp)s,
+                %(status)s,
+                %(is_suspicious)s,
+                %(suspicious_reasons)s
+            FROM currency
+            ON CONFLICT (transaction_id) DO UPDATE
+                SET
+                    status = EXCLUDED.status
+                WHERE
+                    transactions.status = 'pending'
+                    AND EXCLUDED.status IN ('completed', 'failed')
+                    AND transactions.status NOT IN ('completed', 'failed')
+            RETURNING transaction_id;
+            """
+            cur.execute(query, transaction.model_dump())
+            return cur.rowcount
 
 
 class KafkaProducerRepository:
