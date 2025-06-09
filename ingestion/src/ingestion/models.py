@@ -13,3 +13,8 @@ class Transaction(BaseModel):
     status: str
     is_suspicious: bool
     suspicious_reasons: list[str] = []
+
+
+class Currency(BaseModel):
+    currency_id: UUID4
+    symbol: str

@@ -8,8 +8,6 @@ from ingestion.repositories import KafkaProducerRepository
 
 APP_NAME = "tx_csv2stream_ingestor"
 
-logger = get_logger(APP_NAME)
-
 
 @dataclass
 class Config:
@@ -41,16 +39,14 @@ def get_config():
 def main():
     config = get_config()
 
+    logger = get_logger(APP_NAME)
     producer = KafkaProducerRepository(logger, APP_NAME, config.producer_config)
 
     tx_df = pl.read_csv(config.source_path)
     counter = 0
     for row in tx_df.to_dicts():
         counter += 1
-        try:
-            tx = dto.Transaction(**row)
-        except Exception:
-            logger.exception("Validation error")
+        tx = dto.Transaction.model_construct(**row)  # validation skipped
 
         try:
             counter += producer.write(tx)

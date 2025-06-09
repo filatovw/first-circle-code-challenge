@@ -12,6 +12,7 @@ from confluent_kafka import (
 )
 from ingestion.config import DBConfig
 import psycopg
+from psycopg.rows import dict_row
 
 
 class PostgresRepository:
@@ -32,6 +33,7 @@ class PostgresRepository:
             password=self._config.password,
             autocommit=True,
             application_name=self._client_id,
+            row_factory=dict_row,
         )
         self._connection.set_isolation_level(
             psycopg.IsolationLevel.REPEATABLE_READ,
@@ -80,6 +82,27 @@ class PostgresRepository:
             """
             cur.execute(query, transaction.model_dump())
             return cur.rowcount
+
+    def get_currencies(self) -> list[models.Currency]:
+        with self._connection.cursor() as cur:
+            query = "SELECT currency_id, symbol FROM currencies ORDER BY symbol;"
+            cur.execute(query)
+            rows = cur.fetchall()
+            return [models.Currency(**row) for row in rows]
+
+    def currency_exists(self, symbol: str) -> bool:
+        with self._connection.cursor() as cur:
+            query = "SELECT 1 FROM currencies WHERE symbol = %(symbol)s LIMIT 1"
+            cur.execute(query, {"symbol": symbol})
+            row = cur.fetchone()
+            return bool(row)
+
+    def user_exists(self, user_id: str) -> bool:
+        with self._connection.cursor() as cur:
+            query = "SELECT 1 FROM users WHERE user_id = %(user_id)s LIMIT 1"
+            cur.execute(query, {"user_id": user_id})
+            row = cur.fetchone()
+            return bool(row)
 
 
 class KafkaProducerRepository:

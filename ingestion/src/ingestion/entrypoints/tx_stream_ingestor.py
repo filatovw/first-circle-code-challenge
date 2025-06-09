@@ -11,6 +11,7 @@ from ingestion.repositories import (
     PostgresRepository,
 )
 from ingestion.config import QueueConfig, DBConfig
+from ingestion.anomaly_detection import AnomalyDetector
 
 APP_NAME = "tx_stream2db_ingestor"
 
@@ -23,7 +24,7 @@ class Config:
 
 
 def get_config():
-    parser = argparse.ArgumentParser(description="Kafka producer using confluent-kafka")
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--bootstrap-servers", required=True, help="bootstrap server (e.g., kafka:9092)"
     )
@@ -77,22 +78,36 @@ def main():
     db = PostgresRepository(logger, APP_NAME, config.db_config)
 
     with db:
+        anomaly_detector = AnomalyDetector(logger, db)
         for message_body in consumer.next():
             try:
                 # validation against the schema
                 transaction = dto.Transaction.model_validate_json(message_body)
                 logger.info("transaction: %s", transaction)
-                # business logic validation
-                if transaction.sender_id == transaction.receiver_id:
-                    raise ValueError("Sender and Receiver cannot be the same person")
-                if transaction.amount <= 0:
-                    raise ValueError("Non-positive amount")
 
+                # anomaly detection
                 is_suspicious = False
                 reasons = []
-                if transaction.amount > 1000:
+                if (
+                    reason := anomaly_detector.check_amount_outlier(transaction, 10000)
+                ) and reason:
+                    reasons.append(str(reason))
                     is_suspicious = True
-                    reasons.append("UPPER_BOUNDARY_EXCEEDED")
+                if (
+                    reason := anomaly_detector.check_unknown_currency(transaction)
+                ) and reason:
+                    reasons.append(str(reason))
+                    is_suspicious = True
+                if (
+                    reason := anomaly_detector.check_unknown_receiver(transaction)
+                ) and reason:
+                    reasons.append(str(reason))
+                    is_suspicious = True
+                if (
+                    reason := anomaly_detector.check_unknown_sender(transaction)
+                ) and reason:
+                    reasons.append(str(reason))
+                    is_suspicious = True
 
                 # store to DB
                 rows_affected = db.create_or_update_transaction(
@@ -114,14 +129,15 @@ def main():
                     )
                 else:
                     logger.info("Transaction added: %s", transaction.transaction_id)
-
-            except Exception as exc:
+            except ValueError as err:
                 logger.exception("failed to parse transaction message")
                 failed_transaction_message = dto.FailedTransaction(
-                    error=str(exc), message_body=message_body.decode()
+                    error=str(err), message_body=message_body.decode()
                 )
                 producer.write(failed_transaction_message)
                 logger.info("Message %s sent", failed_transaction_message)
+            except Exception:
+                logger.exception("Failed on a transaction processing")
 
 
 if __name__ == "__main__":

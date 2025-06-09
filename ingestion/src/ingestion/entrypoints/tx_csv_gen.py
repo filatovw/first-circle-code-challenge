@@ -3,13 +3,15 @@ import argparse
 import random
 from datetime import datetime, UTC
 from uuid import uuid4
-from ingestion import models
+from ingestion import dto
 import faker
 import time
 import polars as pl
 from dataclasses import dataclass
 
 random.seed(time.time())
+
+APP_NAME = "tx_csv_gen"
 
 
 @dataclass
@@ -100,7 +102,7 @@ def main():
     # create pending transactions
     batch_size = 1000
     for i in range(batch_size):
-        tx = models.Transaction(
+        tx = dto.Transaction(
             transaction_id=str(uuid4()),
             sender_id=users_df["user_id"][random.randint(0, users_count - 1)],
             receiver_id=users_df["user_id"][

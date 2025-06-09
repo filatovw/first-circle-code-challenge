@@ -11,3 +11,5 @@
     POSTGRES_PASSWORD=apppass uv run python src/ingestion/entrypoints/tx_stream_ingestor.py --bootstrap-servers localhost:9094 --topic-failed-transactions failedTransactions --topic-transactions transactions --pg-user appuser --pg-host 0.0.0.0 --pg-port 5432 --pg-db dwh
 
 # Ingest transactions from CSV to DB
+
+    POSTGRES_PASSWORD=apppass uv run python src/ingestion/entrypoints/tx_csv2db_ingestor.py --bootstrap-servers localhost:9094 --topic-failed-transactions failedTransactions --source-path ../data/tx_stream_20200101_20240601.csv --pg-user appuser --pg-host 0.0.0.0 --pg-port 5432 --pg-db dwh
