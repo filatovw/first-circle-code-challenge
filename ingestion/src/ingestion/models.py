@@ -1,4 +1,3 @@
-from datetime import datetime
 from dataclasses import dataclass
 
 
@@ -11,4 +10,3 @@ class Transaction:
     currency: str
     timestamp: str
     status: str
-

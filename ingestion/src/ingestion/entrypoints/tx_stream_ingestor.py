@@ -1,11 +1,8 @@
-import json
 import socket
 import os
 import argparse
 from dataclasses import dataclass
 from confluent_kafka import (
-    Producer,
-    Message,
     Consumer,
     KafkaError,
     KafkaException,
@@ -13,18 +10,17 @@ from confluent_kafka import (
 from ingestion import dto
 import logging
 
+from ingestion.repositories import KafkaProducerRepository
+from ingestion.config import QueueConfig, DBConfig
+
+APP_NAME = "tx_stream2db_ingestor"
+
 
 @dataclass
 class Config:
-    bootstrap_server: str
-    topic_transactions: str
-    topic_failed_transactions: str
-
-    pg_user: str
-    pg_password: str
-    pg_port: int
-    pg_db: str
-    pg_host: str
+    transactions_consumer_config: QueueConfig
+    failed_transactions_producer_config: QueueConfig
+    db_config: DBConfig
 
 
 def get_config():
@@ -48,35 +44,27 @@ def get_config():
     if not pg_password:
         raise ValueError("POSTGRES_PASSWORD Env Var is not set")
     return Config(
-        bootstrap_server=parsed.bootstrap_servers,
-        topic_transactions=parsed.topic_transactions,
-        topic_failed_transactions=parsed.topic_failed_transactions,
-        pg_user=parsed.pg_user,
-        pg_port=parsed.pg_port,
-        pg_host=parsed.pg_host,
-        pg_db=parsed.pg_db,
-        pg_password=pg_password,
+        transactions_consumer_config=QueueConfig(
+            bootstrap_servers=parsed.bootstrap_servers,
+            topic=parsed.topic_transactions,
+        ),
+        failed_transactions_producer_config=QueueConfig(
+            bootstrap_servers=parsed.bootstrap_servers,
+            topic=parsed.topic_failed_transactions,
+        ),
+        db_config=DBConfig(
+            user=parsed.pg_user,
+            port=parsed.pg_port,
+            host=parsed.pg_host,
+            database=parsed.pg_db,
+            password=pg_password,
+        ),
     )
-
-
-def acked(err: KafkaError, msg: Message):
-    if err is not None:
-        print("Failed to deliver message: %s: %s" % (str(msg), str(err)))
-    else:
-        print("Message produced: %s" % (str(msg)))
-
-
-def get_producer(config: Config) -> Producer:
-    queue_config = {
-        "bootstrap.servers": config.bootstrap_server,
-        "client.id": "tx-stream-ingestor",
-    }
-    return Producer(queue_config)
 
 
 def get_consumer(config: Config) -> Consumer:
     queue_config = {
-        "bootstrap.servers": config.bootstrap_server,
+        "bootstrap.servers": config.transactions_consumer_config.bootstrap_servers,
         "client.id": f"tx-stream-ingestor:{socket.gethostname()}",
         "enable.auto.commit": "false",
         "enable.auto.offset.store": "true",
@@ -91,10 +79,13 @@ def main():
     logger = logging.getLogger("TX-Stream-Ingestor")
 
     config = get_config()
-    producer = get_producer(config)
+    producer = KafkaProducerRepository(
+        logger, APP_NAME, config.failed_transactions_producer_config, batch_size=1
+    )
+
     consumer = get_consumer(config)
 
-    consumer.subscribe([config.topic_transactions])
+    consumer.subscribe([config.transactions_consumer_config.topic])
     count = 0
     try:
         while True:
@@ -144,24 +135,11 @@ def main():
 
                 except Exception as exc:
                     logger.exception("failed to parse transaction message")
-                    try:
-                        failed_transaction_message = json.dumps(
-                            {"error": str(exc), "message": message_body.decode()}
-                        )
-                        producer.produce(
-                            topic=config.topic_failed_transactions,
-                            value=failed_transaction_message,
-                        )
-                        logger.info("Message %s sent", failed_transaction_message)
-                    except KeyboardInterrupt:
-                        logger.error("Stopping")
-                        raise
-                    except Exception:
-                        logger.exception("failed to send message")
-                        # fail fast. Writing to the failed transaction topic must work
-                        raise
-                    finally:
-                        producer.flush(1)
+                    failed_transaction_message = dto.FailedTransaction(
+                        error=str(exc), message_body=message_body.decode()
+                    )
+                    producer.write(failed_transaction_message)
+                    logger.info("Message %s sent", failed_transaction_message)
                 count += 1
                 consumer.commit()
 

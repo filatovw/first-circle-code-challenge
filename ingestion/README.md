@@ -4,7 +4,7 @@
 
 # Read generated transactions and push them to the Queue
 
-    uv run python src/ingestion/entrypoints/tx_csv2stream_ingestor.py --bootstrap-servers localhost:9094 --topic transactions --source-path ../data/tx_stream_20200101_20240601.csv
+    uv run python src/ingestion/entrypoints/tx_csv2stream_ingestor.py --bootstrap-servers localhost:9094 --transactions-topic transactions --source-path ../data/tx_stream_20200101_20240601.csv
 
 # Ingest transactions stream to DB
 

@@ -20,3 +20,8 @@ class Transaction(BaseModel):
             datetime: lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
             UUID4: str,
         }
+
+
+class FailedTransaction(BaseModel):
+    error: str
+    message_body: str

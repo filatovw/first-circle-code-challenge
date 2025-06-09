@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class DBConfig:
     user: str
@@ -13,5 +14,4 @@ class DBConfig:
 class QueueConfig:
     bootstrap_servers: str
     topic: str
-    timeout: int
-
+    io_timeout_seconds: int = 5
