@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "confluent-kafka>=2.10.0",
     "connectorx>=0.4.3",
+    "dotenv>=0.9.9",
     "faker>=37.3.0",
     "polars>=1.30.0",
     "psycopg[binary]>=3.2.9",
@@ -33,5 +34,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-tx_csv_ingestor = "ingestion.entrypoints.tx_csv_ingestor:main"
-tx_stream_ingestor = "ingestion.entrypoints.tx_stream_ingestor:main"
+tx_stream2db_ingestor = "ingestion.entrypoints.tx_stream2db_ingestor:main"
+tx_csv_gen = "ingestion.entrypoints.tx_csv_gen:main"
+tx_csv2db_ingestor = "ingestion.entrypoints.tx_csv2db_ingestor:main"
+tx_csv2stream_ingestor = "ingestion.entrypoints.tx_csv2stream_ingestor:main"

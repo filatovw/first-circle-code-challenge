@@ -38,6 +38,7 @@ def get_config():
 
 
 def main():
+    dotenv.load_dotenv(verbose=True)
     config = get_config()
 
     logger = get_logger(APP_NAME)
@@ -59,5 +60,4 @@ def main():
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(verbose=True)
     main()

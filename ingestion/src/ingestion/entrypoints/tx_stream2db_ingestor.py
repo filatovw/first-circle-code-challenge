@@ -68,6 +68,7 @@ def get_config():
 
 
 def main():
+    dotenv.load_dotenv(verbose=True)
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("TX-Stream-Ingestor")
 
@@ -88,7 +89,6 @@ def main():
             try:
                 # validation against the schema
                 transaction = dto.Transaction.model_validate_json(message_body)
-                logger.info("transaction: %s", transaction)
 
                 # anomaly detection
                 is_suspicious = False
@@ -146,5 +146,4 @@ def main():
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(verbose=True)
     main()
