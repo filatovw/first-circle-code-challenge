@@ -12,6 +12,7 @@ from ingestion.repositories import (
 from ingestion.config import QueueConfig, DBConfig
 import json
 from ingestion.anomaly_detection import AnomalyDetector
+import dotenv
 
 APP_NAME = "tx_csv2db_ingestor"
 
@@ -34,17 +35,21 @@ def get_config():
     parser.add_argument(
         "--source-path", "-s", required=True, help="path to the file with transactions"
     )
-    parser.add_argument(
-        "--pg-user", "-u", type=str, required=True, help="database user"
-    )
-    parser.add_argument("--pg-port", type=str, required=True, help="database port")
-    parser.add_argument("--pg-host", type=str, required=True, help="database host")
-    parser.add_argument("--pg-db", type=str, required=True, help="database name")
+    parser.add_argument("--pg-user", "-u", type=str, help="database user")
+    parser.add_argument("--pg-port", type=str, help="database port")
+    parser.add_argument("--pg-host", type=str, help="database host")
+    parser.add_argument("--pg-db", type=str, help="database name")
 
     parsed = parser.parse_args()
-    pg_password = os.environ.get("POSTGRES_PASSWORD")
-    if not pg_password:
-        raise ValueError("POSTGRES_PASSWORD Env Var is not set")
+    pg_password = os.environ["PG_PASSWORD"]
+    if not parsed.pg_user:
+        parsed.pg_user = os.environ["PG_USER"]
+    if not parsed.pg_port:
+        parsed.pg_port = os.environ["PG_PORT"]
+    if not parsed.pg_host:
+        parsed.pg_host = os.environ["PG_HOST"]
+    if not parsed.pg_db:
+        parsed.pg_db = os.environ["PG_DATABASE"]
     return Config(
         failed_transactions_producer_config=QueueConfig(
             bootstrap_servers=parsed.bootstrap_servers,
@@ -137,4 +142,5 @@ def main():
 
 
 if __name__ == "__main__":
+    dotenv.load_dotenv(verbose=True)
     main()

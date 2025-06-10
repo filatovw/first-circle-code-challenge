@@ -5,6 +5,7 @@ from ingestion import dto
 from ingestion.config import QueueConfig
 from ingestion.logger import get_logger
 from ingestion.repositories import KafkaProducerRepository
+import dotenv
 
 APP_NAME = "tx_csv2stream_ingestor"
 
@@ -58,4 +59,5 @@ def main():
 
 
 if __name__ == "__main__":
+    dotenv.load_dotenv(verbose=True)
     main()
