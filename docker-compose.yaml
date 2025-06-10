@@ -104,32 +104,61 @@ services:
         condition: service_healthy
         restart: true
 
-#   tx_stream_ingestor:
-#     build: ./ingestion
-#     depends_on:
-#       - queue
-#       - db
-#     environment:
-#       KAFKA_BROKER: kafka:9092
-#       POSTGRES_HOST: db
-#       POSTGRES_DB: dwh
-#       POSTGRES_USER: appuser
-#       POSTGRES_PASSWORD: apppass
-# 
-#   tx_csv_ingestor:
-#     build: ./ingestion
-#     depends_on:
-#       - s3
-#       - db
-#     environment:
-#       MINIO_ENDPOINT: http://minio:9000
-#       MINIO_ACCESS_KEY: minioadmin
-#       MINIO_SECRET_KEY: minioadmin123
-#       POSTGRES_HOST: postgres
-#       POSTGRES_DB: appdb
-#       POSTGRES_USER: appuser
-#       POSTGRES_PASSWORD: appsecret
-# 
+  tx_stream2db_ingestor:
+    build: ./ingestion
+    depends_on:
+      - queue
+      - queue-init
+      - db
+      - db-migrate
+    environment:
+      - PG_USER=appuser
+      - PG_PASSWORD=apppass
+      - PG_HOST=db
+      - PG_PORT=5432
+      - PG_DATABASE=dwh
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TRANSACTIONS_TOPIC=transactions
+      - KAFKA_FAILED_TRANSACTIONS_TOPIC=failedTransactions
+      - KAFKA_REPORTS_TOPIC=reports
+    command: uv run tx_stream2db_ingestor
+
+  tx_csv2db_ingestor:
+    build: ./ingestion
+    depends_on:
+      - db
+      - db-migrate
+      - queue
+      - queue-init
+    environment:
+      - PG_USER=appuser
+      - PG_PASSWORD=apppass
+      - PG_HOST=db
+      - PG_PORT=5432
+      - PG_DATABASE=dwh
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TRANSACTIONS_TOPIC=transactions
+      - KAFKA_FAILED_TRANSACTIONS_TOPIC=failedTransactions
+      - KAFKA_REPORTS_TOPIC=reports
+    volumes:
+      - ./data:/data
+    command: uv run tx_csv2db_ingestor --source-path /data/tx_stream_20200101_20240601.csv
+
+  tx_csv2stream_ingestor:
+    build: ./ingestion
+    depends_on:
+      - queue
+      - queue-init
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TRANSACTIONS_TOPIC=transactions
+      - KAFKA_FAILED_TRANSACTIONS_TOPIC=failedTransactions
+      - KAFKA_REPORTS_TOPIC=reports
+    volumes:
+      - ./data:/data
+    command: uv run tx_csv2stream_ingestor --source-path /data/tx_stream_20200101_20240601.csv
+
+
 #   reporting_service:
 #     build: ./services/reporting_service
 #     container_name: reporting_service

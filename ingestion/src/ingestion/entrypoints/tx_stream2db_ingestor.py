@@ -140,7 +140,7 @@ def main():
                 else:
                     logger.info("Transaction added: %s", transaction.transaction_id)
             except ValueError as err:
-                logger.exception("failed to parse transaction message")
+                logger.error("failed to parse transaction message")
                 failed_transaction_message = dto.FailedTransaction(
                     error=str(err), message_body=message_body.decode()
                 )

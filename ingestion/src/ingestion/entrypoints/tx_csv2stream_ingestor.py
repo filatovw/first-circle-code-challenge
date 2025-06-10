@@ -29,8 +29,8 @@ def get_config():
     parsed = parser.parse_args()
     if not parsed.bootstrap_servers:
         parsed.bootstrap_servers = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
-    if not parsed.topic_transactions:
-        parsed.topic_transactions = os.environ["KAFKA_TRANSACTIONS_TOPIC"]
+    if not parsed.transactions_topic:
+        parsed.transactions_topic = os.environ["KAFKA_TRANSACTIONS_TOPIC"]
 
     return Config(
         producer_config=QueueConfig(

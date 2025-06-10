@@ -25,7 +25,7 @@ Using `.env` file:
 
 Using shortcut:
 
-    tx_csv2stream_ingestor --bootstrap-servers localhost:9094 --transactions-topic transactions --source-path ../data/tx_stream_20200101_20240601.csv
+    tx_csv2stream_ingestor --source-path ../data/tx_stream_20200101_20240601.csv
 
 
 # Ingest transactions stream to DB
@@ -40,7 +40,7 @@ Using `.env` file:
 
 Using shortcut:
 
-    uv run tx_stream2db_ingestor --bootstrap-servers localhost:9094 --topic-failed-transactions failedTransactions --topic-transactions transactions
+    uv run tx_stream2db_ingestor
 
 # Ingest transactions from CSV to DB
 
@@ -54,4 +54,4 @@ Using `.env` file:
 
 Using shortcut:
 
-    uv run tx_csv2db_ingestor --bootstrap-servers localhost:9094 --topic-failed-transactions failedTransactions --source-path ../data/tx_stream_20200101_20240601.csv
+    uv run tx_csv2db_ingestor --source-path ../data/tx_stream_20200101_20240601.csv
