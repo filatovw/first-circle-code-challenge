@@ -27,12 +27,10 @@ class Config:
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--bootstrap-servers", required=True, help="bootstrap server (e.g., kafka:9092)"
+        "--bootstrap-servers", help="bootstrap server (e.g., kafka:9092)"
     )
-    parser.add_argument("--topic-transactions", required=True, help="source topic")
-    parser.add_argument(
-        "--topic-failed-transactions", required=True, help="failed transactions topic"
-    )
+    parser.add_argument("--topic-transactions", help="source topic")
+    parser.add_argument("--topic-failed-transactions", help="failed transactions topic")
     parser.add_argument("--pg-user", type=str, help="database user")
     parser.add_argument("--pg-port", type=str, help="database port")
     parser.add_argument("--pg-host", type=str, help="database host")
@@ -48,6 +46,13 @@ def get_config():
         parsed.pg_host = os.environ["PG_HOST"]
     if not parsed.pg_db:
         parsed.pg_db = os.environ["PG_DATABASE"]
+    if not parsed.bootstrap_servers:
+        parsed.bootstrap_servers = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
+    if not parsed.topic_failed_transactions:
+        parsed.topic_failed_transactions = os.environ["KAFKA_FAILED_TRANSACTIONS_TOPIC"]
+    if not parsed.topic_transactions:
+        parsed.topic_transactions = os.environ["KAFKA_TRANSACTIONS_TOPIC"]
+
     return Config(
         transactions_consumer_config=QueueConfig(
             bootstrap_servers=parsed.bootstrap_servers,

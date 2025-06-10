@@ -27,11 +27,9 @@ class Config:
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--bootstrap-servers", required=True, help="bootstrap server (e.g., kafka:9092)"
+        "--bootstrap-servers", help="bootstrap server (e.g., kafka:9092)"
     )
-    parser.add_argument(
-        "--topic-failed-transactions", required=True, help="failed transactions topic"
-    )
+    parser.add_argument("--topic-failed-transactions", help="failed transactions topic")
     parser.add_argument(
         "--source-path", "-s", required=True, help="path to the file with transactions"
     )
@@ -50,6 +48,12 @@ def get_config():
         parsed.pg_host = os.environ["PG_HOST"]
     if not parsed.pg_db:
         parsed.pg_db = os.environ["PG_DATABASE"]
+
+    if not parsed.bootstrap_servers:
+        parsed.bootstrap_servers = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
+    if not parsed.topic_failed_transactions:
+        parsed.topic_failed_transactions = os.environ["KAFKA_FAILED_TRANSACTIONS_TOPIC"]
+
     return Config(
         failed_transactions_producer_config=QueueConfig(
             bootstrap_servers=parsed.bootstrap_servers,

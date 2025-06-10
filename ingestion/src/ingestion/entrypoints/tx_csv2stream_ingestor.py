@@ -6,6 +6,7 @@ from ingestion.config import QueueConfig
 from ingestion.logger import get_logger
 from ingestion.repositories import KafkaProducerRepository
 import dotenv
+import os
 
 APP_NAME = "tx_csv2stream_ingestor"
 
@@ -19,15 +20,18 @@ class Config:
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--bootstrap-servers", required=True, help="bootstrap server (e.g., kafka:9092)"
+        "--bootstrap-servers", help="bootstrap server (e.g., kafka:9092)"
     )
-    parser.add_argument(
-        "--transactions-topic", required=True, help="transactions topic"
-    )
+    parser.add_argument("--transactions-topic", help="transactions topic")
     parser.add_argument(
         "--source-path", "-s", required=True, help="path to the file with transactions"
     )
     parsed = parser.parse_args()
+    if not parsed.bootstrap_servers:
+        parsed.bootstrap_servers = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
+    if not parsed.topic_transactions:
+        parsed.topic_transactions = os.environ["KAFKA_TRANSACTIONS_TOPIC"]
+
     return Config(
         producer_config=QueueConfig(
             bootstrap_servers=parsed.bootstrap_servers,
