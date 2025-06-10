@@ -158,18 +158,38 @@ services:
       - ./data:/data
     command: uv run tx_csv2stream_ingestor --source-path /data/tx_stream_20200101_20240601.csv
 
+  postgresql:
+    image: 'bitnami/postgresql:17.5.0'
+    environment:
+      - POSTGRESQL_DATABASE=bitnami_airflow
+      - POSTGRESQL_USERNAME=bn_airflow
+      - POSTGRESQL_PASSWORD=bitnami1
+    volumes:
+      - ./volumes/af_pg:/bitnami/postgresql
+    healthcheck:
+      test: pg_isready -U bn_airflow -d bitnami_airflow
+      interval: 10s
+      timeout: 1s
+      retries: 10
 
-#   reporting_service:
-#     build: ./services/reporting_service
-#     container_name: reporting_service
-#     depends_on:
-#       - postgres
-#       - minio
-#     environment:
-#       POSTGRES_HOST: postgres
-#       POSTGRES_DB: appdb
-#       POSTGRES_USER: appuser
-#       POSTGRES_PASSWORD: appsecret
-#       MINIO_ENDPOINT: http://minio:9000
-#       MINIO_ACCESS_KEY: minioadmin
-#       MINIO_SECRET_KEY: minioadmin123
+  airflow:
+    image: bitnami/airflow:latest
+    environment:
+      - AIRFLOW_COMPONENT_TYPE=worker
+      - AIRFLOW_FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      - AIRFLOW_SECRET_KEY=a25mQ1FHTUh3MnFRSk5KMEIyVVU2YmN0VGRyYTVXY08=
+      - AIRFLOW_EXECUTOR=LocalExecutor
+      - AIRFLOW_DATABASE_NAME=bitnami_airflow
+      - AIRFLOW_DATABASE_USERNAME=bn_airflow
+      - AIRFLOW_DATABASE_PASSWORD=bitnami1
+      - AIRFLOW_LOAD_EXAMPLES=no
+    depends_on:
+      postgresql:
+        condition: service_healthy
+        restart: true
+    volumes:
+      - ./flows/dags:/opt/bitnami/airflow/dags
+      - ./flows/init.sh:/opt/init.sh
+    command: bash -c 'airflow db migrate && bash /opt/init.sh && airflow standalone'
+    ports:
+      - '8080:8080'

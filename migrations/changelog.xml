@@ -17,4 +17,12 @@
 
     <include file="seeds/202506081714_init_data.sql" relativeToChangelogFile="true"/>
 
+    <changeSet id="2" author="filatovw">
+        <sqlFile path="ddl/202506090101_init.up.sql" relativeToChangelogFile="true" />
+
+        <rollback>
+            <sqlFile path="ddl/202506090101_init.down.sql" relativeToChangelogFile="true" />
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
