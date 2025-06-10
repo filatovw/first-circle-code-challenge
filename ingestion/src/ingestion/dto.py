@@ -44,5 +44,6 @@ class Transaction(BaseModel):
 
 
 class FailedTransaction(BaseModel):
-    error: str
-    message_body: str
+    reason: str
+    source: str
+    data: str

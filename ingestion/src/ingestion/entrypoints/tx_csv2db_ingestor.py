@@ -135,7 +135,9 @@ def main():
             except ValueError as err:
                 logger.error("Failed on a transaction validation")
                 failed_transaction_message = dto.FailedTransaction(
-                    error=str(err), message_body=json.dumps(row)
+                    source=APP_NAME,
+                    reason=str(err),
+                    data=json.dumps(row),
                 )
                 producer.write(failed_transaction_message)
                 logger.info("Message %s sent", failed_transaction_message)

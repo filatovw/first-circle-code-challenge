@@ -142,7 +142,9 @@ def main():
             except ValueError as err:
                 logger.error("failed to parse transaction message")
                 failed_transaction_message = dto.FailedTransaction(
-                    error=str(err), message_body=message_body.decode()
+                    source=APP_NAME,
+                    reason=str(err),
+                    data=message_body.decode(),
                 )
                 producer.write(failed_transaction_message)
                 logger.info("Message %s sent", failed_transaction_message)
