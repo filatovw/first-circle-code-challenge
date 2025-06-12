@@ -16,7 +16,7 @@ services:
       timeout: 1s
       retries: 10
 
-  db-migrate:
+  db-init:
     image: liquibase/liquibase:4.32.0
     volumes:
       - ./migrations/changelog.xml:/liquibase/changelog.xml
@@ -110,7 +110,7 @@ services:
       - queue
       - queue-init
       - db
-      - db-migrate
+      - db-init
     environment:
       - PG_USER=appuser
       - PG_PASSWORD=apppass
@@ -123,13 +123,45 @@ services:
       - KAFKA_REPORTS_TOPIC=reports
     command: uv run tx_stream2db_ingestor
 
+  tx_csv_gen_1:
+    build: ./ingestion
+    depends_on:
+      - db
+      - db-init
+    environment:
+      - PG_USER=appuser
+      - PG_PASSWORD=apppass
+      - PG_HOST=db
+      - PG_PORT=5432
+      - PG_DATABASE=dwh
+    volumes:
+      - ./data:/data
+    command: uv run tx_csv_gen -o /data/tx_stream_20200101_20240601.csv --date-start 2020-01-01 --date-end 2024-06-01
+
+  tx_csv_gen_2:
+    build: ./ingestion
+    depends_on:
+      - db
+      - db-init
+    environment:
+      - PG_USER=appuser
+      - PG_PASSWORD=apppass
+      - PG_HOST=db
+      - PG_PORT=5432
+      - PG_DATABASE=dwh
+    volumes:
+      - ./data:/data
+    command: uv run tx_csv_gen -o /data/tx_stream_20210101_20250601.csv --date-start 2021-01-01 --date-end 2025-06-01
+
   tx_csv2db_ingestor:
     build: ./ingestion
     depends_on:
       - db
-      - db-migrate
+      - db-init
       - queue
       - queue-init
+      - tx_csv_gen_1
+      - tx_csv_gen_2
     environment:
       - PG_USER=appuser
       - PG_PASSWORD=apppass
@@ -149,6 +181,8 @@ services:
     depends_on:
       - queue
       - queue-init
+      - tx_csv_gen_1
+      - tx_csv_gen_2
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - KAFKA_TRANSACTIONS_TOPIC=transactions
@@ -156,7 +190,7 @@ services:
       - KAFKA_REPORTS_TOPIC=reports
     volumes:
       - ./data:/data
-    command: uv run tx_csv2stream_ingestor --source-path /data/tx_stream_20200101_20240601.csv
+    command: uv run tx_csv2stream_ingestor --source-path /data/tx_stream_20210101_20250601.csv
 
   postgresql:
     image: 'bitnami/postgresql:17.5.0'
@@ -182,7 +216,8 @@ services:
       - AIRFLOW_DATABASE_NAME=bitnami_airflow
       - AIRFLOW_DATABASE_USERNAME=bn_airflow
       - AIRFLOW_DATABASE_PASSWORD=bitnami1
-      - AIRFLOW_LOAD_EXAMPLES=no
+      - AIRFLOW__CORE__LOAD_EXAMPLES=no
+      - AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE=/opt/auth/simple_auth_manager_passwords.json.generated
     depends_on:
       postgresql:
         condition: service_healthy
@@ -190,6 +225,7 @@ services:
     volumes:
       - ./flows/dags:/opt/bitnami/airflow/dags
       - ./flows/init.sh:/opt/init.sh
+      - ./flows/auth:/opt/auth
     command: bash -c 'airflow db migrate && bash /opt/init.sh && airflow standalone'
     ports:
       - '8080:8080'

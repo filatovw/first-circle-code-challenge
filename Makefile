@@ -24,6 +24,8 @@ clean:
 	rm -rf volumes/db
 	rm -rf volumes/minio
 	rm -rf volumes/queue
+	rm -rf volumes/af_redism
+	rm -rf volumes/af_pg
 
 ## :
 ## help - this message
