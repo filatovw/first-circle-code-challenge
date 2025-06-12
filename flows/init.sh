@@ -8,4 +8,4 @@ airflow connections add 'db' \
         "port": 5432, 
         "schema": "dwh", 
         "extra": null
-    }'
+    }' || true
