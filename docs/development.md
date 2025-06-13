@@ -55,10 +55,8 @@ Go to DAGs page: http://0.0.0.0:8080/dags
 - Trigger them manually to generate reports in DB. Reports are available as aggregated data in tables
   - report_monthly_user_stats
   - report_daily_user_stats
+  - csv_transactions_to_db_ingest - run `tx_csv2db_ingestor` job from the Airflow
 
-TODO:
-    - [] API endpoints to access reports
-    - [] notify about the data status
 
 ### Stop everything:
 
