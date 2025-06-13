@@ -11,7 +11,7 @@ with DAG(
     schedule="1 0 * * *",
     catchup=False,
 ) as dag:
-    create_pet_table = SQLExecuteQueryOperator(
+    refresh_report_table = SQLExecuteQueryOperator(
         task_id="create_report",
         conn_id="db",
         sql="""
@@ -31,7 +31,8 @@ with DAG(
         JOIN transactions t
             ON t.status = 'completed' AND (t.sender_id = u.user_id OR t.receiver_id = u.user_id)
         GROUP BY u.user_id, DATE_TRUNC('month', t.created_at);
+
         COMMIT;
         """,
     )
-    create_pet_table
+    refresh_report_table
